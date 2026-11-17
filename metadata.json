@@ -1,0 +1,6 @@
+{
+  "name": "Dhoni AI",
+  "description": "Fast AI chatbot specializing in MS Dhoni's cricket career, IPL, CSK, captaincy, and records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
