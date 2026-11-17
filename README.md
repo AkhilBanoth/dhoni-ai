@@ -5,7 +5,7 @@ A fast AI chatbot specializing in MS Dhoni — his life, cricket career, ICC tro
 ## Tech Stack
 
 - **Frontend:** React + Vite + Tailwind CSS (deployable to **Vercel**)
-- **Backend:** Python FastAPI + Uvicorn + Google GenAI SDK (`gemini-2.5-flash`) + `python-dotenv` (deployable to **Render**)
+- **Backend:** Python FastAPI + Uvicorn + Google GenAI SDK (`gemini-3.8-flash`) + `python-dotenv` (deployable to **Render**)
 - **Features:** Real-time SSE streaming responses, dark obsidian theme with golden accents, skeleton loading state, no login/database clutter.
 
 ---
@@ -24,7 +24,7 @@ A fast AI chatbot specializing in MS Dhoni — his life, cricket career, ICC tro
    - **Health Check Path:** `/api/health`
 4. Add **Environment Variables** in Render:
    - `GEMINI_API_KEY` = your Google Gemini API key
-   - `GEMINI_MODEL` = `gemini-2.5-flash`
+   - `GEMINI_MODEL` = `gemini-3.8-flash`
    - `ALLOWED_ORIGIN_REGEX` = `https://.*\.vercel\.app` (or set `ALLOWED_ORIGINS` to your exact Vercel URL if using a custom domain)
 5. Deploy and copy your Render URL (for example, `https://dhoni-ai-backend.onrender.com`).
 
@@ -59,7 +59,7 @@ Edit `backend\.env` and paste your Gemini API key:
 
 ```env
 GEMINI_API_KEY=your_actual_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.8-flash
 ```
 
 Start the FastAPI server:

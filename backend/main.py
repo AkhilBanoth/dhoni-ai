@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip() or "gemini-3.8-flash"
+FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-4-hydrogen", "gemini-3.1-flash-lite"]
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
@@ -94,24 +95,43 @@ def chat_stream(payload: ChatStreamRequest) -> StreamingResponse:
 
     config = types.GenerateContentConfig(
         system_instruction=DHONI_SYSTEM_INSTRUCTION,
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
 
+    candidates = list(dict.fromkeys([GEMINI_MODEL, *FALLBACK_MODELS]))
+
     def event_generator():
-        try:
-            stream = client.models.generate_content_stream(
-                model=GEMINI_MODEL,
-                contents=contents,
-                config=config,
-            )
-            for chunk in stream:
-                text = getattr(chunk, "text", None)
-                if text:
-                    yield f"data: {json.dumps({'text': text})}\n\n"
-            yield f"data: {json.dumps({'done': True})}\n\n"
-        except Exception as exc:
-            error_message = str(exc) or "Failed to generate response from Gemini."
+        emitted_any_chunk = False
+        last_error: Exception | None = None
+
+        for model_name in candidates:
+            try:
+                stream = client.models.generate_content_stream(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                )
+                for chunk in stream:
+                    text = getattr(chunk, "text", None)
+                    if text:
+                        emitted_any_chunk = True
+                        yield f"data: {json.dumps({'text': text})}\n\n"
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                err_str = str(exc)
+                retryable = any(
+                    code in err_str
+                    for code in ("404", "NOT_FOUND", "503", "UNAVAILABLE", "429")
+                )
+                if emitted_any_chunk or not retryable:
+                    break
+
+        if last_error is not None:
+            error_message = str(last_error) or "Failed to generate response from Gemini."
             yield f"data: {json.dumps({'error': error_message})}\n\n"
+        else:
+            yield f"data: {json.dumps({'done': True})}\n\n"
 
     return StreamingResponse(
         event_generator(),
