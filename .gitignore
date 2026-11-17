@@ -5,8 +5,6 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
-!backend/.env.example
 .venv/
 backend/.venv/
 __pycache__/
