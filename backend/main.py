@@ -33,7 +33,7 @@ Answer questions about his life, cricket career, achievements, records, IPL, CSK
 Core Rules:
 1. Give accurate, verified answers. NEVER invent facts, dates, match scores, or statistics. If you are uncertain about a specific figure or detail, explicitly say you are not certain rather than guessing.
 2. Respond in clear, engaging English (or match the user's language if they write in another language).
-3. Keep answers well-structured, concise, and easy to scan (use short paragraphs or clean bullet points for records and milestones).
+3. Keep answers brief, direct, and easy to scan: 2–4 concise sentences or 3–5 short bullet points (around 60–110 words), unless the user explicitly asks for a detailed explanation.
 4. If asked something completely unrelated to MS Dhoni or cricket, politely remind the user that you specialize in MS Dhoni and offer to answer any question about his career, captaincy, IPL/CSK, or life."""
 
 app = FastAPI(title="Dhoni AI API", version="1.0.0")
@@ -93,39 +93,60 @@ def chat_stream(payload: ChatStreamRequest) -> StreamingResponse:
         )
     )
 
-    config = types.GenerateContentConfig(
-        system_instruction=DHONI_SYSTEM_INSTRUCTION,
-    )
+    def build_config(model_name: str, use_fast_thinking: bool) -> types.GenerateContentConfig:
+        if use_fast_thinking and hasattr(types, "ThinkingConfig"):
+            level = "MINIMAL" if "flash-lite" in model_name else "LOW"
+            try:
+                return types.GenerateContentConfig(
+                    system_instruction=DHONI_SYSTEM_INSTRUCTION,
+                    thinking_config=types.ThinkingConfig(thinking_level=level),
+                )
+            except Exception:
+                pass
+        return types.GenerateContentConfig(
+            system_instruction=DHONI_SYSTEM_INSTRUCTION,
+        )
 
     candidates = list(dict.fromkeys([GEMINI_MODEL, *FALLBACK_MODELS]))
 
     def event_generator():
+        yield ": connected\n\n"
         emitted_any_chunk = False
         last_error: Exception | None = None
 
         for model_name in candidates:
-            try:
-                stream = client.models.generate_content_stream(
-                    model=model_name,
-                    contents=contents,
-                    config=config,
-                )
-                for chunk in stream:
-                    text = getattr(chunk, "text", None)
-                    if text:
-                        emitted_any_chunk = True
-                        yield f"data: {json.dumps({'text': text})}\n\n"
-                last_error = None
-                break
-            except Exception as exc:
-                last_error = exc
-                err_str = str(exc)
-                retryable = any(
-                    code in err_str
-                    for code in ("404", "NOT_FOUND", "503", "UNAVAILABLE", "429")
-                )
-                if emitted_any_chunk or not retryable:
+            for use_fast_thinking in (True, False):
+                try:
+                    stream = client.models.generate_content_stream(
+                        model=model_name,
+                        contents=contents,
+                        config=build_config(model_name, use_fast_thinking),
+                    )
+                    for chunk in stream:
+                        text = getattr(chunk, "text", None)
+                        if text:
+                            emitted_any_chunk = True
+                            yield f"data: {json.dumps({'text': text})}\n\n"
+                    last_error = None
                     break
+                except Exception as exc:
+                    last_error = exc
+                    err_str = str(exc)
+                    if use_fast_thinking and not emitted_any_chunk and (
+                        "thinking" in err_str.lower() or "400" in err_str or "INVALID_ARGUMENT" in err_str
+                    ):
+                        continue
+                    break
+
+            if last_error is None or emitted_any_chunk:
+                break
+            err_str = str(last_error)
+            retryable = any(
+                code in err_str
+                for code in ("404", "NOT_FOUND", "503", "UNAVAILABLE", "429")
+            )
+            if not retryable:
+                break
 
         if last_error is not None:
             error_message = str(last_error) or "Failed to generate response from Gemini."
