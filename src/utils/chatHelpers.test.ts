@@ -5,6 +5,7 @@ import {
   sanitizeHistory,
   parseMarkdownBlocks,
   parseInlineTokens,
+  getChatStreamUrl,
 } from './chatHelpers';
 
 test('parseSseBuffer handles split chunks and multiple frames', () => {
@@ -86,4 +87,17 @@ test('parseInlineTokens tokenizes bold, italic, and inline code', () => {
     { type: 'code', value: '183*' },
     { type: 'text', value: ' best.' },
   ]);
+});
+
+test('getChatStreamUrl resolves relative and remote Render base URLs', () => {
+  assert.equal(getChatStreamUrl(undefined), '/api/chat/stream');
+  assert.equal(getChatStreamUrl('   '), '/api/chat/stream');
+  assert.equal(
+    getChatStreamUrl('https://dhoni-ai-api.onrender.com'),
+    'https://dhoni-ai-api.onrender.com/api/chat/stream'
+  );
+  assert.equal(
+    getChatStreamUrl('https://dhoni-ai-api.onrender.com///'),
+    'https://dhoni-ai-api.onrender.com/api/chat/stream'
+  );
 });

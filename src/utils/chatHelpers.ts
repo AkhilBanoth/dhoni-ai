@@ -222,3 +222,11 @@ export function parseInlineTokens(text: string): InlineToken[] {
 
   return tokens;
 }
+
+/**
+ * Resolves the streaming chat API URL using an optional VITE_API_BASE_URL (e.g. Render backend URL on Vercel).
+ */
+export function getChatStreamUrl(baseUrl?: string): string {
+  const trimmed = (baseUrl ?? '').trim().replace(/\/+$/, '');
+  return trimmed ? `${trimmed}/api/chat/stream` : '/api/chat/stream';
+}

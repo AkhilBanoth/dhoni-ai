@@ -4,7 +4,7 @@ import { ChatHeader } from './components/ChatHeader';
 import { MessageList } from './components/MessageList';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { type ChatMessage } from './shared/dhoniPrompt';
-import { parseSseBuffer, sanitizeHistory } from './utils/chatHelpers';
+import { getChatStreamUrl, parseSseBuffer, sanitizeHistory } from './utils/chatHelpers';
 
 function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -61,7 +61,7 @@ export default function App() {
     setIsStreaming(true);
 
     try {
-      const response = await fetch('/api/chat/stream', {
+      const response = await fetch(getChatStreamUrl(import.meta.env.VITE_API_BASE_URL), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

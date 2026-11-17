@@ -22,6 +22,9 @@ ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+ALLOWED_ORIGIN_REGEX = os.getenv(
+    "ALLOWED_ORIGIN_REGEX", r"https://.*\.vercel\.app"
+).strip() or None
 
 DHONI_SYSTEM_INSTRUCTION = """You are Dhoni AI, an expert assistant specializing in MS Dhoni (Mahendra Singh Dhoni).
 Answer questions about his life, cricket career, achievements, records, IPL, CSK (Chennai Super Kings), captaincy, wicketkeeping, and memorable matches.
@@ -37,7 +40,8 @@ app = FastAPI(title="Dhoni AI API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -54,6 +58,11 @@ class ChatStreamRequest(BaseModel):
 
 
 _client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"status": "ok", "service": "Dhoni AI API"}
 
 
 @app.get("/api/health")
